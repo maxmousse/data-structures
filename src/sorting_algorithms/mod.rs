@@ -10,4 +10,7 @@
 //! | Radix Sort        | Sorts by processing individual digits                      | O(nk), k = digits in largest number | O(nk)                    | O(nk)                          | O(n + k)          | Linear time complexity for certain cases | Requires knowledge of the range of numbers |
 pub mod bubble_sort;
 pub mod insertion_sort;
+pub mod merge_sort;
+pub mod quick_sort;
+pub mod radix_sort;
 pub mod selection_sort;
