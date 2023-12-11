@@ -1,249 +1,206 @@
-use core::fmt;
-use std::{fmt::Display, usize};
+pub struct List<T> {
+    head: Option<Box<Node<T>>>,
+}
 
-#[derive(Copy, PartialEq, Debug)]
-pub struct Node<T>
-where
-    T: Copy + Display,
-{
-    value: T,
+pub struct IntoIter<T>(List<T>);
+
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>,
+}
+
+pub struct IterMut<'a, T> {
+    next: Option<&'a mut Node<T>>,
+}
+
+struct Node<T> {
+    elem: T,
     next: Option<Box<Node<T>>>,
 }
 
-impl<T> Node<T>
-where
-    T: Copy + Display,
-{
-    pub fn new(value: T) -> Self {
-        Node { value, next: None }
-    }
-
-    pub fn append(&mut self, node: Box<Node<T>>) {
-        self.next = Some(node);
-    }
-}
-
-#[derive(Copy, PartialEq, Debug)]
-pub struct SinglyLinkedList<T>
-where
-    T: Copy + Display,
-{
-    length: usize,
-    head: Option<Box<Node<T>>>,
-    tail: Option<Box<Node<T>>>,
-}
-
-impl<T> fmt::Display for SinglyLinkedList<T>
-where
-    T: Copy + Display,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut current = &self.head;
-        write!(f, "LinkedList: [")?;
-
-        while let Some(node) = current {
-            write!(f, "{}", node.value)?;
-
-            if node.next.is_some() {
-                write!(f, ", ")?;
-            }
-
-            current = &node.next;
-        }
-
-        write!(f, "]")
-    }
-}
-
-impl<T> SinglyLinkedList<T>
-where
-    T: Copy + Display,
-{
+impl<T> List<T> {
     pub fn new() -> Self {
-        SinglyLinkedList {
-            length: 0,
-            head: None,
-            tail: None,
+        List { head: None }
+    }
+
+    pub fn unshift(&mut self, elem: T) {
+        let new_node = Box::new(Node {
+            elem: elem,
+            next: self.head.take(),
+        });
+
+        self.head = Some(new_node);
+    }
+
+    pub fn shift(&mut self) -> Option<T> {
+        self.head.take().map(|head| {
+            self.head = head.next;
+            head.elem
+        })
+    }
+
+    pub fn peek(&self) -> Option<&T> {
+        self.head.as_ref().map(|head| &head.elem)
+    }
+
+    pub fn peek_mut(&mut self) -> Option<&mut T> {
+        self.head.as_mut().map(|head| &mut head.elem)
+    }
+
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter(self)
+    }
+
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+        Iter {
+            next: self.head.as_deref(),
         }
     }
 
-    pub fn push(&mut self, data: T) {
-        let new_node = Box::new(Node::new(data));
-
-        match self.tail.take() {
-            Some(mut old_tail) => {
-                old_tail.next = Some(new_node);
-                self.tail = Some(old_tail.next.unwrap());
-            }
-            None => {
-                self.head = Some(new_node);
-                self.tail = Some(self.head.as_mut().unwrap());
-            }
-        }
-
-        // match self.is_empty() {
-        //     true => {
-        //         self.head = Some(new_node);
-        //         self.tail = Some(self.head.as_mut().unwrap().clone()); // Not efficient to clone, but else require unsafe, I think
-        //     }
-        //     false => {
-        //         let mut old_tail = self.tail.take().unwrap();
-        //         old_tail.next = Some(new_node);
-        //         self.tail = old_tail.next;
-        //     }
-        // }
-
-        self.length += 1;
-    }
-
-    pub fn pop(&mut self) -> Option<T> {
-        // Get before last node
-        match self.get(self.length - 2) {
-            Some(before_last_node) => {
-                // Extract last node value
-                let last_node_value = before_last_node.next.as_ref().unwrap().value;
-                // Update tail
-                self.tail = Some(Box::new(before_last_node));
-                self.tail.as_mut().unwrap().next = None;
-
-                Some(last_node_value)
-            }
-            None => None,
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+        IterMut {
+            next: self.head.as_deref_mut(),
         }
     }
+}
 
-    pub fn is_empty(&self) -> bool {
-        self.length == 0
+impl<T> Drop for List<T> {
+    fn drop(&mut self) {
+        let mut cur_link = self.head.take();
+
+        while let Some(mut boxed_node) = cur_link {
+            cur_link = boxed_node.next.take();
+        }
     }
+}
 
-    pub fn get(&mut self, index: usize) -> Option<&mut Node<T>> {
-        if index >= self.length {
-            return None;
-        }
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.shift()
+    }
+}
 
-        let mut current = &mut self.head;
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
 
-        for _ in 0..index {
-            if let Some(node) = current {
-                current = &mut node.next;
-            } else {
-                return None; // Unexpected case: the list is shorter than expected
-            }
-        }
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.map(|node| {
+            self.next = node.next.as_deref();
+            &node.elem
+        })
+    }
+}
 
-        current.as_deref_mut()
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.take().map(|node| {
+            self.next = node.next.as_deref_mut();
+            &mut node.elem
+        })
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::List;
 
     #[test]
-    fn node_new() {
-        assert_eq!(
-            Node::new(5),
-            Node {
-                value: 5,
-                next: None
-            }
-        );
+    fn basics() {
+        let mut list = List::new();
+
+        // Check empty list behaves right
+        assert_eq!(list.shift(), None);
+
+        // Populate list
+        list.unshift(1);
+        list.unshift(2);
+        list.unshift(3);
+
+        // Check normal removal
+        assert_eq!(list.shift(), Some(3));
+        assert_eq!(list.shift(), Some(2));
+
+        // Push some more just to make sure nothing's corrupted
+        list.unshift(4);
+        list.unshift(5);
+
+        // Check normal removal
+        assert_eq!(list.shift(), Some(5));
+        assert_eq!(list.shift(), Some(4));
+
+        // Check exhaustion
+        assert_eq!(list.shift(), Some(1));
+        assert_eq!(list.shift(), None);
     }
 
     #[test]
-    fn node_append() {
-        let mut node_1 = Node::new(1);
+    fn peek() {
+        let mut list = List::new();
 
-        node_1.append(Box::new(Node::new(2)));
+        assert_eq!(list.peek(), None);
 
-        assert_eq!(node_1.next.unwrap(), Box::new(Node::new(2)));
+        list.unshift(1);
+        list.unshift(2);
+        list.unshift(3);
+
+        assert_eq!(list.peek(), Some(&3));
     }
 
     #[test]
-    fn list_is_empty() {
-        let mut list: SinglyLinkedList<i32> = SinglyLinkedList::new();
+    fn peek_mut() {
+        let mut list = List::new();
 
-        assert_eq!(list.is_empty(), true);
+        assert_eq!(list.peek_mut(), None);
 
-        list.push(1);
+        list.unshift(1);
+        list.unshift(2);
+        list.unshift(3);
 
-        assert_eq!(list.is_empty(), false);
+        assert_eq!(list.peek_mut(), Some(&mut 3));
+
+        list.peek_mut().map(|value| *value = 42);
+        assert_eq!(list.peek(), Some(&42));
     }
 
     #[test]
-    fn list_push() {
-        let mut list: SinglyLinkedList<i32> = SinglyLinkedList::new();
-        println!("List 1: {}", list);
+    fn into_iter() {
+        let mut list = List::new();
+        list.unshift(1);
+        list.unshift(2);
+        list.unshift(3);
 
-        list.push(1);
-        println!("List 2: {}", list);
-
-        assert_eq!(*list.head.as_ref().unwrap(), Box::new(Node::new(1)));
-        assert_eq!(*list.tail.as_ref().unwrap(), Box::new(Node::new(1)));
-        assert_eq!(list.length, 1);
-
-        list.push(2);
-        println!("List 3: {}", list);
-
-        assert_eq!(
-            *list.head.as_ref().unwrap().next.as_ref().unwrap(),
-            Box::new(Node::new(2))
-        );
-        assert_eq!(*list.head.as_ref().unwrap(), Box::new(Node::new(1)));
-        assert_eq!(*list.tail.as_ref().unwrap(), Box::new(Node::new(2)));
-        assert_eq!(list.length, 2);
+        let mut iter = list.into_iter();
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), None);
     }
 
     #[test]
-    fn list_get() {
-        let mut list: SinglyLinkedList<i32> = SinglyLinkedList::new();
+    fn iter() {
+        let mut list = List::new();
+        list.unshift(1);
+        list.unshift(2);
+        list.unshift(3);
 
-        assert_eq!(list.get(0), None);
-
-        list.push(1);
-        list.push(2);
-
-        assert_eq!(*list.get(0).unwrap(), Node::new(1));
-        assert_eq!(list.get(2), None);
-        assert_eq!(*list.get(1).unwrap(), Node::new(2));
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&1));
     }
 
     #[test]
-    fn list_pop() {
-        let mut list: SinglyLinkedList<i32> = SinglyLinkedList::new();
+    fn iter_mut() {
+        let mut list = List::new();
+        list.unshift(1);
+        list.unshift(2);
+        list.unshift(3);
 
-        list.push(1);
-        list.push(2);
-        list.push(3);
-
-        assert_eq!(*list.head.as_ref().unwrap(), Box::new(Node::new(1)));
-        assert_eq!(*list.tail.as_ref().unwrap(), Box::new(Node::new(3)));
-        assert_eq!(list.length, 3);
-
-        let mut popped = list.pop();
-
-        assert_eq!(popped.unwrap(), 3);
-        assert_eq!(*list.tail.as_ref().unwrap(), Box::new(Node::new(2)));
-        assert_eq!(list.length, 2);
-
-        popped = list.pop();
-
-        assert_eq!(popped.unwrap(), 2);
-        assert_eq!(*list.tail.as_ref().unwrap(), Box::new(Node::new(1)));
-        assert_eq!(list.length, 1);
-
-        popped = list.pop();
-
-        assert_eq!(popped.unwrap(), 1);
-
-        assert_eq!(list.head.as_ref(), None);
-        assert_eq!(list.tail.as_ref(), None);
-        assert_eq!(list.length, 0);
-
-        assert_eq!(popped, None);
-
-        assert_eq!(list.head.as_ref(), None);
-        assert_eq!(list.tail.as_ref(), None);
-        assert_eq!(list.length, 0);
+        let mut iter = list.iter_mut();
+        assert_eq!(iter.next(), Some(&mut 3));
+        assert_eq!(iter.next(), Some(&mut 2));
+        assert_eq!(iter.next(), Some(&mut 1));
     }
 }
