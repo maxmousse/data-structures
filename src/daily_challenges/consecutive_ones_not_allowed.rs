@@ -31,8 +31,8 @@ pub fn consecutive_ones_not_allowed(n: u32) -> u32 {
     // Explanations
     //
     // For a binary string of size n, let say we have:
-    // - combinations_starting_with_0(n) distinct binary string without consecutive 1, that start with 0
-    // - combinations_starting_with_1(n) distinct binary string without consecutive 1, that start with 1
+    // - combinations_starting_with_0(n) distinct binary string without consecutive 1, that starts with 0
+    // - combinations_starting_with_1(n) distinct binary string without consecutive 1, that starts with 1
     //
     // Example: n = 2
     // combinations_starting_with_0(2) = 2 ('00', '01)
