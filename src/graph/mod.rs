@@ -11,4 +11,6 @@
 //! intricate relationships and dependencies makes them a fundamental tool for
 //! solving real-world problems across diverse domains.
 
+mod identifiable;
 pub mod oriented_graph;
+pub mod oriented_weighted_graph;
