@@ -1,8 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-pub trait Identifiable {
-    fn get_id(&self) -> String;
-}
+use super::identifiable::Identifiable;
 
 /// A basic oriented graph implementation
 ///
