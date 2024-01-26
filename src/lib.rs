@@ -1,4 +1,5 @@
 pub mod daily_challenges;
+pub mod dynamic_programming;
 pub mod graph;
 pub mod hash_map;
 pub mod linked_list;
