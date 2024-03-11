@@ -1,3 +1,4 @@
+pub mod can_frequencies_be_equal;
 pub mod consecutive_ones_not_allowed;
 pub mod gold_mine_problem;
 pub mod is_graph_a_tree;
